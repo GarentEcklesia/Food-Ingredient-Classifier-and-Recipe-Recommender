@@ -70,7 +70,10 @@ def predict_ingredients(image, model, label_encoder, img_size=224, top_k=5):
 # RECIPE GENERATION
 # ---------------------------
 def generate_recipe(ingredients, confidences):
-    api_key = os.getenv("API_KEY")
+    if "OPENAI_API_KEY" in st.secrets:
+        api_key = st.secrets["OPENAI_API_KEY"]
+    else:
+        api_key = os.getenv("API_KEY")
     if not api_key:
         return "❌ Missing GROQ_API_KEY in .env file."
 
