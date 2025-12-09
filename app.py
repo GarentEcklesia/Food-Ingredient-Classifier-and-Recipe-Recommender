@@ -18,6 +18,33 @@ st.set_page_config(
     layout="wide"
 )
 
+st.markdown(
+    """
+    <style>
+    /* Make text input more visible */
+    input[type="text"] {
+        border: 2px solid black !important;
+        border-radius: 8px !important;
+        padding: 10px !important;
+        font-size: 16px !important;
+        background-color: #f9f9f9 !important;
+        color: #000 !important;
+    }
+
+    /* Optional: adjust the text area too */
+    textarea {
+        border: 2px solid black !important;
+        border-radius: 8px !important;
+        padding: 10px !important;
+        font-size: 16px !important;
+        background-color: #f9f9f9 !important;
+        color: #000 !important;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True
+)
+
 # ---------------------------
 # LOAD MODEL & METADATA
 # ---------------------------
@@ -69,11 +96,8 @@ def predict_ingredients(image, model, label_encoder, img_size=224, top_k=5):
 # ---------------------------
 # RECIPE GENERATION
 # ---------------------------
-def generate_recipe(ingredients, confidences):
-    if "OPENAI_API_KEY" in st.secrets:
-        api_key = st.secrets["OPENAI_API_KEY"]
-    else:
-        api_key = os.getenv("API_KEY")
+def generate_recipe(ingredients, confidences, user_instruction=""):
+    api_key = os.getenv("API_KEY")
     if not api_key:
         return "❌ Missing GROQ_API_KEY in .env file."
 
@@ -82,10 +106,12 @@ def generate_recipe(ingredients, confidences):
     )
 
     prompt = f"""
-Based on the following detected food ingredients, suggest a practical and delicious recipe.
+You are a helpful cooking assistant. 
 
 Detected Ingredients:
 {ingredient_list}
+
+User Instruction: {user_instruction}
 
 Please provide:
 1. Recipe name
@@ -182,7 +208,6 @@ def main():
         st.header("🎯 Prediction Results")
 
         if "predictions" in st.session_state:
-
             preds = st.session_state["predictions"]
 
             # Show top-K results
@@ -190,7 +215,7 @@ def main():
                 st.metric(f"{i}. {p['ingredient']}", f"{p['confidence']*100:.1f}%")
                 st.progress(p["confidence"])
 
-            # NEW — Probability distribution visualization
+            # Probability distribution visualization
             st.subheader("📊 Full Probability Distribution")
             fig, ax = plt.subplots(figsize=(6, 4))
             ax.bar(range(len(st.session_state["raw_probs"])), st.session_state["raw_probs"])
@@ -201,12 +226,16 @@ def main():
 
             st.markdown("---")
 
+            # Add user instruction input
+            user_instruction = st.text_input(
+                "💡 Add your instructions (e.g., vegan, less spicy, low-carb):", ""
+            )
+
             if st.button("🍽️ Generate Recipe"):
                 with st.spinner("Generating recipe..."):
                     ingredients = [p["ingredient"] for p in preds]
                     confs = [p["confidence"] for p in preds]
-                    recipe = generate_recipe(ingredients, confs)
-
+                    recipe = generate_recipe(ingredients, confs, user_instruction)
                     st.session_state["recipe"] = recipe
 
     # ---------------------------
@@ -220,3 +249,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
